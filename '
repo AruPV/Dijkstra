@@ -1,0 +1,144 @@
+#ifndef DIJKSTRA_HPP
+#define DIJKSTRA_HPP
+#include <array>
+#include <algorithm>
+#include <string>
+#include <optional>
+#include <iostream>
+#include <tuple>
+#include <vector>
+
+// Made this a class to make interfacing with the array easier
+class AdjacencyMatrix { 
+	public:
+		int vertices;
+		std::vector<std::vector<std::optional<int>>> vector;
+		AdjacencyMatrix(int vertices): vertices{vertices}{
+			vector.resize(vertices);
+		}
+		std::optional<int>& operator()(int row_i, int col_i){
+			return vector[row_i][col_i];
+		}
+		std::vector<std::optional<int>>& operator()(int row_i){
+			return vector[row_i];
+		}
+		int size(){
+			return vertices;
+		}
+};
+
+std::string print_adjacency(AdjacencyMatrix matrix){
+	/*************************************************************************
+	 * @brief prints an adjacency matrix in easy-to-read format
+	 * @param adjacency a 2D list of edge weights for a graph
+	 *************************************************************************/
+	std::string print_string;
+	for(int row_i = 0; row_i < matrix.size(); row_i++){
+
+		for (int col_i = 0; col_i < matrix.size(); col_i ++){
+			std::optional<int> opt_value = matrix(row_i,col_i);
+			std::string string_val;
+			if (!opt_value.has_value()){ string_val = "*";}
+			else { string_val = std::to_string(*opt_value);}
+			print_string += string_val + " ";
+		}
+		print_string += "\n";
+	}
+	std::cout << print_string;
+	return print_string;
+}
+
+struct Vertex{
+	/*************************************************************************
+	 * @brief Ties the information relating to a vertex together
+	 *************************************************************************/
+	int	    distance  = -1;
+	bool    visited   = false;
+	Vertex* parent    = nullptr;
+	int     index     = -1;
+};
+
+std::optional<std::tuple<int,std::vector<int>>> dijkstra(
+		AdjacencyMatrix    adjacencies, 
+		size_t             start, 
+		size_t             dest) {
+	/*************************************************************************
+	 * @brief Dijkstra's algorithm on a graph represented by AdjacencyMatrix
+	 * @param adjacency 2D adjacency matrix representin graph
+	 * @param start origin index
+	 * @param dest destination index
+	 * @throw std::out_of_range if dest or start are not valid indeces
+	 * @return shortest path
+	 *************************************************************************/
+	// Check params are legal
+	const int element_count = adjacencies.size();
+
+	auto is_valid = [element_count](int i){ return (i>0 && i<element_count) ;};
+	if (!is_valid(start) || !is_valid(dest)) { 
+		throw std::out_of_range("Start or Destination not within range");
+	}
+
+	if (start == dest){ std::invalid_argument("start and end must be different");}
+
+	std::vector<Vertex> graph(adjacencies.size());
+	std::optional<int>  next_i;
+
+	auto cur_v = graph.begin() + start;
+	cur_v->distance = 0;
+
+	//Cache indeces in Verteces
+	for(int i = 0; i < graph.size(); i++){ graph[i].index = i; }
+
+	while (cur_v->index != dest){
+
+		cur_v->visited = true;
+		auto distances  = adjacencies(cur_v->index);				//std::array
+
+
+		//Update distances from this vertex
+		for (auto& dist: distances){
+			Vertex* other_v = &graph[other_v->index];
+			if (other_v->visited) { continue;}		
+
+			bool is_adjacent = *dist != -1;
+			if (!is_adjacent)   { continue;} 
+
+			int new_dist = cur_v->distance + *dist;
+
+			if (new_dist < dist){
+				other_v->distance = new_dist;
+				other_v->parent = &(*cur_v);
+			}
+		}
+
+		//Find next closest
+		Vertex* next_v = nullptr;
+		for (auto& vertex: graph){
+			if (vertex.visited)   {continue;}
+			if (next_v == nullptr) {
+				next_v = &vertex;
+				continue;
+			}
+			if(vertex->distance < next_v->distance){
+				next_v = vertex;
+				continue;
+			}
+		}
+
+		if (next_v == nullptr) {return std::nullopt;} // if there is no path
+	}
+
+	// Construct return value
+	int              path_length = 0;
+	std::vector<int> path_indeces;
+	while (cur_v->index != start){
+		++path_length;
+		path_indeces.push_back(cur_v->index);
+		cur_v = cur_v->parent;
+	}
+	auto return_value = std::tuple<int,std::vector<int>>(path_length,path_indeces);
+
+	return return_value;
+}
+
+#endif
